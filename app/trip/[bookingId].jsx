@@ -10,10 +10,12 @@ import {
   Alert,
   Image,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import QRCode from "react-native-qrcode-svg";
+import { useCameraPermissions } from "expo-camera"; // ✅ FIXED IMPORT
 import bookingService from "../../src/api/services/bookingService";
 import Loader from "../../src/components/common/Loader";
 import Button from "../../src/components/common/Button";
@@ -34,25 +36,27 @@ export default function TripDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [showQRModal, setShowQRModal] = useState(false);
 
-  // Safely check if booking exists before checking role
+  // Security State
+  const [securityStep, setSecurityStep] = useState("verify");
+  const [verifying, setVerifying] = useState(false);
+
+  // ✅ FIXED HOOK USAGE
+  const [permission, requestPermission] = useCameraPermissions();
+
+  // Safely check if booking exists
   const isHost =
     user?.role === "host" || (booking && booking.host?.id === user?.id);
 
   useEffect(() => {
-    if (bookingId) {
-      loadBookingDetails();
-    }
+    if (bookingId) loadBookingDetails();
   }, [bookingId]);
 
   const loadBookingDetails = async () => {
     try {
       setLoading(true);
       const response = await bookingService.getBookingById(bookingId);
-      if (response.success) {
-        setBooking(response.data);
-      }
+      if (response.success) setBooking(response.data);
     } catch (error) {
-      console.error("Error loading booking:", error);
       Alert.alert("Error", "Failed to load trip details");
       router.back();
     } finally {
@@ -60,15 +64,36 @@ export default function TripDetailScreen() {
     }
   };
 
-  const handleStartTrip = () => {
+  const handleStartTrip = async () => {
     if (isHost) {
       router.push({
         pathname: "/trip/scan-renter",
         params: { bookingId: booking.id },
       });
     } else {
+      // ✅ Request permission if not granted
+      if (!permission?.granted) {
+        const result = await requestPermission();
+        if (!result.granted) {
+          Alert.alert(
+            "Permission Required",
+            "Camera access is needed for biometric verification."
+          );
+          return;
+        }
+      }
+      setSecurityStep("verify");
       setShowQRModal(true);
     }
+  };
+
+  // Mock Face Verification
+  const handleVerifyFace = () => {
+    setVerifying(true);
+    setTimeout(() => {
+      setVerifying(false);
+      setSecurityStep("qr");
+    }, 2500);
   };
 
   const handleEndTrip = () => {
@@ -146,7 +171,43 @@ export default function TripDetailScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{isHost ? "Renter" : "Host"}</Text>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: SPACING.md,
+            }}
+          >
+            <Text style={styles.sectionTitle}>
+              {isHost ? "Renter" : "Host"}
+            </Text>
+            {/* Host Rating Display */}
+            {!isHost && (
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  backgroundColor: COLORS.warning + "15",
+                  padding: 4,
+                  borderRadius: 4,
+                }}
+              >
+                <Ionicons name="star" size={14} color={COLORS.warning} />
+                <Text
+                  style={{
+                    fontWeight: "bold",
+                    marginLeft: 4,
+                    fontSize: 12,
+                    color: COLORS.textPrimary,
+                  }}
+                >
+                  4.9
+                </Text>
+              </View>
+            )}
+          </View>
+
           <View style={styles.personCard}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>
@@ -162,6 +223,12 @@ export default function TripDetailScreen() {
               <Text style={styles.personPhone}>
                 {isHost ? booking.renter?.phone : booking.host?.phone}
               </Text>
+              {/* Added verified badge */}
+              <Text
+                style={{ fontSize: 10, color: COLORS.success, marginTop: 2 }}
+              >
+                ✅ Identity Verified
+              </Text>
             </View>
             <TouchableOpacity style={styles.callButton}>
               <Ionicons name="call" size={20} color={COLORS.white} />
@@ -172,11 +239,11 @@ export default function TripDetailScreen() {
         <View style={styles.actions}>
           {booking.status === "upcoming" && (
             <Button
-              title={isHost ? "Scan QR to Start" : "Show QR Code"}
+              title={isHost ? "Scan QR to Start" : "Verify & Start Trip"}
               onPress={handleStartTrip}
               icon={
                 <Ionicons
-                  name="qr-code"
+                  name={isHost ? "qr-code" : "scan-circle"}
                   size={20}
                   color={COLORS.white}
                   style={{ marginRight: 8 }}
@@ -220,26 +287,63 @@ export default function TripDetailScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Start Trip</Text>
-            <Text style={styles.modalSubtitle}>
-              Show this QR code to the host to verify booking
-            </Text>
-            <View style={styles.qrContainer}>
-              <QRCode
-                value={JSON.stringify({
-                  bookingId: booking.id,
-                  action: "start_trip",
-                  renterId: user?.id,
-                })}
-                size={200}
-              />
-            </View>
-            <Button
-              title="Close"
-              onPress={() => setShowQRModal(false)}
-              variant="outline"
-              style={{ marginTop: SPACING.xl, width: "100%" }}
-            />
+            {securityStep === "verify" ? (
+              <View style={styles.securityStep}>
+                <Text style={styles.modalTitle}>Identity Check 🔒</Text>
+                <Text style={styles.modalSubtitle}>
+                  To prevent theft, verify your face.
+                </Text>
+                <View style={styles.cameraPreview}>
+                  {verifying ? (
+                    <View style={styles.scanningState}>
+                      <ActivityIndicator size="large" color={COLORS.success} />
+                      <Text style={styles.scanningText}>Verifying...</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.faceFrame}>
+                      <Ionicons
+                        name="person"
+                        size={80}
+                        color={COLORS.gray300}
+                      />
+                    </View>
+                  )}
+                </View>
+                <Button
+                  title="Scan Face"
+                  onPress={handleVerifyFace}
+                  disabled={verifying}
+                  style={{ width: "100%" }}
+                />
+              </View>
+            ) : (
+              <View style={styles.securityStep}>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={20}
+                    color={COLORS.success}
+                  />
+                  <Text style={styles.verifiedText}>Identity Verified</Text>
+                </View>
+                <Text style={styles.modalTitle}>Digital Key</Text>
+                <View style={styles.qrContainer}>
+                  <QRCode
+                    value={JSON.stringify({
+                      bookingId: booking.id,
+                      action: "start_trip",
+                    })}
+                    size={200}
+                  />
+                </View>
+                <Button
+                  title="Close"
+                  onPress={() => setShowQRModal(false)}
+                  variant="outline"
+                  style={{ marginTop: SPACING.xl, width: "100%" }}
+                />
+              </View>
+            )}
           </View>
         </View>
       </Modal>
@@ -247,6 +351,7 @@ export default function TripDetailScreen() {
   );
 }
 
+// ... (Helper functions getStatusColor, etc. remain same)
 const getStatusColor = (status) => {
   switch (status) {
     case "upcoming":
@@ -428,4 +533,38 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   errorContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  // Security Styles
+  securityStep: { width: "100%", alignItems: "center" },
+  cameraPreview: {
+    width: 200,
+    height: 200,
+    backgroundColor: COLORS.gray50,
+    borderRadius: 100,
+    marginBottom: SPACING.lg,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: COLORS.gray200,
+    overflow: "hidden",
+  },
+  faceFrame: {
+    width: 150,
+    height: 150,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  scanningState: { alignItems: "center", gap: 10 },
+  scanningText: { color: COLORS.success, fontWeight: "bold" },
+  verifiedBadge: {
+    flexDirection: "row",
+    backgroundColor: COLORS.success + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginBottom: 10,
+    alignItems: "center",
+    gap: 4,
+  },
+  verifiedText: { color: COLORS.success, fontWeight: "bold", fontSize: 12 },
 });

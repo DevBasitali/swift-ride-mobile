@@ -8,12 +8,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  TextInput // Fallback for DateTimePicker if needed
+  Modal,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-// ✅ Ensure this package is installed: npx expo install @react-native-community/datetimepicker
-import DateTimePicker from '@react-native-community/datetimepicker'; 
 import carService from '../../src/api/services/carService';
 import Button from '../../src/components/common/Button';
 import Loader from '../../src/components/common/Loader';
@@ -22,43 +20,54 @@ import { useAuth } from '../../src/hooks/useAuth';
 
 export default function BookingScreen() {
   const router = useRouter();
-  
-  // ✅ CRITICAL: This must match the filename [carId].jsx
-  const { carId } = useLocalSearchParams(); 
-  
+  const { carId } = useLocalSearchParams();
   const { user } = useAuth();
   
   const [car, setCar] = useState(null);
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   
+  // Mock Dates
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(new Date(Date.now() + 3600000)); // +1 hour
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  
+  // Simple Mock Picker State
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerMode, setPickerMode] = useState('start'); // 'start' or 'end'
 
   useEffect(() => {
-    if (carId) {
-      loadCarDetails();
-    }
+    if (carId) loadCarDetails();
   }, [carId]);
 
   const loadCarDetails = async () => {
     try {
       setLoading(true);
-      // ✅ Using carId here
       const response = await carService.getCarById(carId);
-      
       if (response.success) {
         setCar(response.data);
+      } else {
+        Alert.alert('Error', 'Car not found');
+        router.back();
       }
     } catch (error) {
-      console.error('Error loading car:', error);
-      Alert.alert('Error', 'Failed to load car details');
-      router.back();
+      console.error('Error:', error);
+      Alert.alert('Error', 'Failed to load car');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateChange = (hoursToAdd) => {
+    const newDate = new Date();
+    newDate.setHours(newDate.getHours() + hoursToAdd);
+    
+    if (pickerMode === 'start') {
+      setStartDate(newDate);
+      setEndDate(new Date(newDate.getTime() + 3600000)); // Auto set end +1hr
+    } else {
+      setEndDate(newDate);
+    }
+    setShowPicker(false);
   };
 
   const calculatePrice = () => {
@@ -67,18 +76,14 @@ export default function BookingScreen() {
     const remainingHours = hours % 24;
     
     let total = 0;
-    if (days > 0) {
-      total += days * car.pricePerDay;
-    }
-    if (remainingHours > 0) {
-      total += remainingHours * car.pricePerHour;
-    }
+    if (days > 0) total += days * (car?.pricePerDay || 0);
+    if (remainingHours > 0) total += remainingHours * (car?.pricePerHour || 0);
     
-    const serviceFee = Math.round(total * 0.05); // 5% service fee
-    const insurance = Math.round(total * 0.03); // 3% insurance
+    const serviceFee = Math.round(total * 0.05);
+    const insurance = Math.round(total * 0.03);
     
     return {
-      hours,
+      hours: Math.max(0, hours),
       days,
       remainingHours,
       subtotal: total,
@@ -89,24 +94,16 @@ export default function BookingScreen() {
   };
 
   const handleBooking = async () => {
-    if (endDate <= startDate) {
-      Alert.alert('Invalid Time', 'End time must be after start time');
-      return;
-    }
-
     const pricing = calculatePrice();
-
     Alert.alert(
       'Confirm Booking',
-      `Total: Rs. ${pricing.total}\n\nDuration: ${pricing.hours} hours\n\nProceed to payment?`,
+      `Total: Rs. ${pricing.total}\nDuration: ${pricing.hours} hours`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Confirm',
-          onPress: async () => {
+          onPress: () => {
             setBookingLoading(true);
-            
-            // Simulate booking API call delay
             setTimeout(() => {
               setBookingLoading(false);
               router.push({
@@ -117,20 +114,15 @@ export default function BookingScreen() {
                   bookingId: `BK${Date.now()}`,
                 },
               });
-            }, 1500);
+            }, 1000);
           },
         },
       ]
     );
   };
 
-  if (loading) {
-    return <Loader fullScreen text="Loading..." />;
-  }
-
-  if (!car) {
-    return null;
-  }
+  if (loading) return <Loader fullScreen text="Loading..." />;
+  if (!car) return null;
 
   const pricing = calculatePrice();
 
@@ -145,313 +137,79 @@ export default function BookingScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView 
-        style={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView style={styles.content}>
         {/* Car Info */}
         <View style={styles.carInfo}>
-          <View style={styles.carIcon}>
-            <Ionicons name="car-sport" size={32} color={COLORS.primary} />
-          </View>
-          <View style={styles.carDetails}>
+          <Ionicons name="car-sport" size={32} color={COLORS.primary} />
+          <View style={{ marginLeft: 10 }}>
             <Text style={styles.carName}>{car.make} {car.model}</Text>
-            <Text style={styles.carSubtitle}>{car.year} • {car.color}</Text>
+            <Text style={styles.carSubtitle}>Rs. {car.pricePerHour}/hr</Text>
           </View>
         </View>
 
-        {/* Date & Time Selection */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Date & Time</Text>
-          
-          {/* Start Time */}
-          <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={() => setShowStartPicker(true)}
-          >
-            <View style={styles.dateTimeIcon}>
-              <Ionicons name="calendar" size={20} color={COLORS.primary} />
-            </View>
-            <View style={styles.dateTimeContent}>
-              <Text style={styles.dateTimeLabel}>Start Time</Text>
-              <Text style={styles.dateTimeValue}>
-                {startDate.toLocaleDateString()} {startDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-          </TouchableOpacity>
+        {/* Date Selection */}
+        <Text style={styles.sectionTitle}>Select Time</Text>
+        
+        <TouchableOpacity style={styles.dateButton} onPress={() => { setPickerMode('start'); setShowPicker(true); }}>
+          <Text>Start: {startDate.toLocaleString()}</Text>
+          <Ionicons name="chevron-down" size={20} />
+        </TouchableOpacity>
 
-          {showStartPicker && (
-            <DateTimePicker
-              value={startDate}
-              mode="datetime"
-              is24Hour={false}
-              onChange={(event, selectedDate) => {
-                setShowStartPicker(false);
-                if (selectedDate) {
-                  setStartDate(selectedDate);
-                  // Auto-set end time to 1 hour later
-                  setEndDate(new Date(selectedDate.getTime() + 3600000));
-                }
-              }}
-            />
-          )}
+        <TouchableOpacity style={styles.dateButton} onPress={() => { setPickerMode('end'); setShowPicker(true); }}>
+          <Text>End: {endDate.toLocaleString()}</Text>
+          <Ionicons name="chevron-down" size={20} />
+        </TouchableOpacity>
 
-          {/* End Time */}
-          <TouchableOpacity
-            style={styles.dateTimeButton}
-            onPress={() => setShowEndPicker(true)}
-          >
-            <View style={styles.dateTimeIcon}>
-              <Ionicons name="calendar" size={20} color={COLORS.secondary} />
-            </View>
-            <View style={styles.dateTimeContent}>
-              <Text style={styles.dateTimeLabel}>End Time</Text>
-              <Text style={styles.dateTimeValue}>
-                {endDate.toLocaleDateString()} {endDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-          </TouchableOpacity>
-
-          {showEndPicker && (
-            <DateTimePicker
-              value={endDate}
-              mode="datetime"
-              is24Hour={false}
-              minimumDate={startDate}
-              onChange={(event, selectedDate) => {
-                setShowEndPicker(false);
-                if (selectedDate) {
-                  setEndDate(selectedDate);
-                }
-              }}
-            />
-          )}
-
-          {/* Duration Display */}
-          <View style={styles.durationBox}>
-            <Ionicons name="time" size={20} color={COLORS.info} />
-            <Text style={styles.durationText}>
-              Duration: {pricing.hours} hours
-              {pricing.days > 0 && ` (${pricing.days} ${pricing.days === 1 ? 'day' : 'days'})`}
-            </Text>
-          </View>
-        </View>
-
-        {/* Price Breakdown */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Price Breakdown</Text>
-          <View style={styles.priceBreakdown}>
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Subtotal</Text>
-              <Text style={styles.priceValue}>Rs. {pricing.subtotal}</Text>
-            </View>
-            
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Service Fee (5%)</Text>
-              <Text style={styles.priceValue}>Rs. {pricing.serviceFee}</Text>
-            </View>
-            
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabel}>Insurance (3%)</Text>
-              <Text style={styles.priceValue}>Rs. {pricing.insurance}</Text>
-            </View>
-            
-            <View style={styles.priceDivider} />
-            
-            <View style={styles.priceRow}>
-              <Text style={styles.priceLabelTotal}>Total</Text>
-              <Text style={styles.priceValueTotal}>Rs. {pricing.total}</Text>
-            </View>
+        {/* Pricing */}
+        <View style={styles.pricingBox}>
+          <Text style={styles.sectionTitle}>Summary</Text>
+          <View style={styles.row}><Text>Subtotal</Text><Text>Rs. {pricing.subtotal}</Text></View>
+          <View style={styles.row}><Text>Service Fee</Text><Text>Rs. {pricing.serviceFee}</Text></View>
+          <View style={styles.row}><Text>Insurance</Text><Text>Rs. {pricing.insurance}</Text></View>
+          <View style={[styles.row, { marginTop: 10, borderTopWidth: 1, paddingTop: 5 }]}>
+            <Text style={{ fontWeight: 'bold' }}>Total</Text>
+            <Text style={{ fontWeight: 'bold', color: COLORS.primary }}>Rs. {pricing.total}</Text>
           </View>
         </View>
       </ScrollView>
 
-      {/* Footer */}
       <View style={styles.footer}>
-        <View style={styles.footerPrice}>
-          <Text style={styles.footerPriceLabel}>Total</Text>
-          <Text style={styles.footerPriceValue}>Rs. {pricing.total}</Text>
-        </View>
-        <Button
-          title={bookingLoading ? "Processing..." : "Proceed to Payment"}
-          onPress={handleBooking}
-          loading={bookingLoading}
-          disabled={bookingLoading || endDate <= startDate}
-        />
+        <Button title="Proceed to Payment" onPress={handleBooking} loading={bookingLoading} />
       </View>
+
+      {/* Custom Mock Picker Modal */}
+      <Modal visible={showPicker} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Select {pickerMode === 'start' ? 'Start' : 'End'} Time</Text>
+            {[1, 3, 6, 12, 24, 48].map((hrs) => (
+              <TouchableOpacity key={hrs} style={styles.modalOption} onPress={() => handleDateChange(hrs)}>
+                <Text>In {hrs} Hours</Text>
+              </TouchableOpacity>
+            ))}
+            <Button title="Cancel" onPress={() => setShowPicker(false)} variant="outline" style={{ marginTop: 10 }} />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xxl,
-    paddingBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.gray200,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  content: {
-    flex: 1,
-    padding: SPACING.lg,
-  },
-  carInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primary + '10',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.lg,
-    marginBottom: SPACING.xl,
-  },
-  carIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  carDetails: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  carName: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.xs,
-  },
-  carSubtitle: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.textSecondary,
-  },
-  section: {
-    marginBottom: SPACING.xl,
-  },
-  sectionTitle: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.md,
-  },
-  dateTimeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.gray50,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginBottom: SPACING.sm,
-  },
-  dateTimeIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.white,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dateTimeContent: {
-    flex: 1,
-    marginLeft: SPACING.md,
-  },
-  dateTimeLabel: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.textSecondary,
-    marginBottom: SPACING.xs,
-  },
-  dateTimeValue: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '600',
-    color: COLORS.textPrimary,
-  },
-  durationBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.info + '10',
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-    marginTop: SPACING.sm,
-  },
-  durationText: {
-    flex: 1,
-    fontSize: FONT_SIZES.md,
-    fontWeight: '600',
-    color: COLORS.info,
-    marginLeft: SPACING.sm,
-  },
-  priceBreakdown: {
-    backgroundColor: COLORS.gray50,
-    padding: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  priceRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SPACING.xs,
-  },
-  priceLabel: {
-    fontSize: FONT_SIZES.sm,
-    color: COLORS.textSecondary,
-  },
-  priceValue: {
-    fontSize: FONT_SIZES.md,
-    fontWeight: '500',
-    color: COLORS.textPrimary,
-  },
-  priceLabelTotal: {
-    fontSize: FONT_SIZES.lg,
-    fontWeight: 'bold',
-    color: COLORS.textPrimary,
-  },
-  priceValueTotal: {
-    fontSize: FONT_SIZES.xl,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
-  priceDivider: {
-    height: 1,
-    backgroundColor: COLORS.gray300,
-    marginVertical: SPACING.sm,
-  },
-  footer: {
-    padding: SPACING.lg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.gray200,
-    backgroundColor: COLORS.white,
-  },
-  footerPrice: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-  },
-  footerPriceLabel: {
-    fontSize: FONT_SIZES.md,
-    color: COLORS.textSecondary,
-  },
-  footerPriceValue: {
-    fontSize: FONT_SIZES.xxl,
-    fontWeight: 'bold',
-    color: COLORS.primary,
-  },
+  container: { flex: 1, backgroundColor: COLORS.white },
+  header: { flexDirection: 'row', padding: SPACING.lg, paddingTop: SPACING.xxl, alignItems: 'center', justifyContent: 'space-between' },
+  headerTitle: { fontSize: FONT_SIZES.lg, fontWeight: 'bold' },
+  content: { padding: SPACING.lg },
+  carInfo: { flexDirection: 'row', alignItems: 'center', marginBottom: SPACING.xl, backgroundColor: COLORS.gray50, padding: SPACING.md, borderRadius: 10 },
+  carName: { fontWeight: 'bold', fontSize: FONT_SIZES.md },
+  carSubtitle: { color: COLORS.textSecondary },
+  sectionTitle: { fontWeight: 'bold', marginBottom: SPACING.sm, marginTop: SPACING.md },
+  dateButton: { padding: SPACING.md, borderWidth: 1, borderColor: COLORS.gray300, borderRadius: 8, marginBottom: SPACING.md, flexDirection: 'row', justifyContent: 'space-between' },
+  pricingBox: { backgroundColor: COLORS.gray50, padding: SPACING.md, borderRadius: 10, marginTop: SPACING.lg },
+  row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
+  footer: { padding: SPACING.lg, borderTopWidth: 1, borderColor: COLORS.gray200 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 },
+  modalContent: { backgroundColor: 'white', padding: 20, borderRadius: 10 },
+  modalTitle: { fontWeight: 'bold', fontSize: 18, marginBottom: 15, textAlign: 'center' },
+  modalOption: { padding: 15, borderBottomWidth: 1, borderColor: '#eee' },
 });

@@ -58,8 +58,7 @@ export default function CarDetailScreen() {
   };
 
   const handleBookNow = () => {
-    // ✅ FIX: Direct string path for navigation
-    router.push(`/booking/${carId}`);
+   router.push(`/booking/${id}`); 
   };
 
   const handleEdit = () => {
