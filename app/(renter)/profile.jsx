@@ -1,3 +1,5 @@
+// app/(renter)/profile.jsx
+
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -13,6 +15,19 @@ export default function ProfileScreen() {
     await logout();
     router.replace('/(auth)/login');
   };
+
+  const MenuItem = ({ icon, title, badge, onPress }) => (
+    <TouchableOpacity style={styles.menuItem} onPress={onPress}>
+      <View style={styles.menuItemLeft}>
+        <Ionicons name={icon} size={22} color={COLORS.textPrimary} />
+        <Text style={styles.menuItemText}>{title}</Text>
+      </View>
+      <View style={styles.menuItemRight}>
+        {badge && <Text style={styles.badge}>{badge}</Text>}
+        <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
+      </View>
+    </TouchableOpacity>
+  );
 
   return (
     <ScrollView style={styles.container}>
@@ -32,12 +47,37 @@ export default function ProfileScreen() {
 
       {/* Menu Items */}
       <View style={styles.menu}>
-        <MenuItem icon="person-outline" title="Edit Profile" />
-        <MenuItem icon="shield-checkmark-outline" title="KYC Verification" badge={user?.kycStatus} />
-        <MenuItem icon="card-outline" title="Payment Methods" />
-        <MenuItem icon="notifications-outline" title="Notifications" />
-        <MenuItem icon="help-circle-outline" title="Help & Support" />
-        <MenuItem icon="settings-outline" title="Settings" />
+        <MenuItem 
+          icon="person-outline" 
+          title="Edit Profile" 
+          onPress={() => router.push('/settings/edit-profile')} 
+        />
+        <MenuItem 
+          icon="shield-checkmark-outline" 
+          title="KYC Verification" 
+          badge={user?.kycStatus} 
+          onPress={() => router.push('/(auth)/kyc-upload')}
+        />
+        <MenuItem 
+          icon="card-outline" 
+          title="Payment Methods" 
+          onPress={() => router.push('/settings/payment-methods')}
+        />
+        <MenuItem 
+          icon="lock-closed-outline" 
+          title="Change Password" 
+          onPress={() => router.push('/settings/change-password')} 
+        />
+        <MenuItem 
+          icon="notifications-outline" 
+          title="Notifications" 
+          onPress={() => router.push('/notifications')}
+        />
+        <MenuItem 
+          icon="help-circle-outline" 
+          title="Help & Support" 
+          onPress={() => router.push('/settings/help')}
+        />
       </View>
 
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
@@ -47,19 +87,6 @@ export default function ProfileScreen() {
     </ScrollView>
   );
 }
-
-const MenuItem = ({ icon, title, badge }) => (
-  <TouchableOpacity style={styles.menuItem}>
-    <View style={styles.menuItemLeft}>
-      <Ionicons name={icon} size={22} color={COLORS.textPrimary} />
-      <Text style={styles.menuItemText}>{title}</Text>
-    </View>
-    <View style={styles.menuItemRight}>
-      {badge && <Text style={styles.badge}>{badge}</Text>}
-      <Ionicons name="chevron-forward" size={20} color={COLORS.gray400} />
-    </View>
-  </TouchableOpacity>
-);
 
 const styles = StyleSheet.create({
   container: {

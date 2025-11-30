@@ -1,3 +1,5 @@
+// app/(host)/_layout.jsx
+
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS, FONT_SIZES } from '../../src/config/theme';
@@ -29,6 +31,18 @@ export default function HostLayout() {
           ),
         }}
       />
+      
+      {/* ✅ ADD THIS TAB: Bookings/Trips */}
+      <Tabs.Screen
+        name="trips"
+        options={{
+          title: 'Bookings',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar" size={size} color={color} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="my-fleet"
         options={{
@@ -47,6 +61,7 @@ export default function HostLayout() {
           ),
         }}
       />
+      {/* Remove Earnings if space is tight, or keep it */}
       <Tabs.Screen
         name="earnings"
         options={{

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,14 +8,16 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Formik } from 'formik';
-import { loginValidationSchema } from '../../src/utils/validators';
-import { useAuth } from '../../src/hooks/useAuth';
-import { Button, Input } from '../../src/components/common';
-import { COLORS, SPACING, FONT_SIZES } from '../../src/config/theme';
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Formik } from "formik";
+import { loginValidationSchema } from "../../src/utils/validators";
+import { useAuth } from "../../src/hooks/useAuth";
+import { Button, Input } from "../../src/components/common";
+import { COLORS, SPACING, FONT_SIZES } from "../../src/config/theme";
+
+// Add this function inside LoginScreen component (before return)
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -24,17 +26,17 @@ export default function LoginScreen() {
 
   const handleLogin = async (values) => {
     setLoading(true);
-    
+
     try {
       const result = await login(values);
-      
+
       if (result.success) {
         // Navigation is handled by the index.jsx based on user role and KYC status
       } else {
-        Alert.alert('Login Failed', result.message);
+        Alert.alert("Login Failed", result.message);
       }
     } catch (error) {
-      Alert.alert('Error', 'An unexpected error occurred');
+      Alert.alert("Error", "An unexpected error occurred");
     } finally {
       setLoading(false);
     }
@@ -43,7 +45,7 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -61,7 +63,7 @@ export default function LoginScreen() {
 
         {/* Login Form */}
         <Formik
-          initialValues={{ email: '', password: '' }}
+          initialValues={{ email: "", password: "" }}
           validationSchema={loginValidationSchema}
           onSubmit={handleLogin}
         >
@@ -81,8 +83,8 @@ export default function LoginScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 value={values.email}
-                onChangeText={handleChange('email')}
-                onBlur={handleBlur('email')}
+                onChangeText={handleChange("email")}
+                onBlur={handleBlur("email")}
                 error={touched.email && errors.email}
               />
 
@@ -92,13 +94,13 @@ export default function LoginScreen() {
                 icon="lock-closed-outline"
                 secureTextEntry
                 value={values.password}
-                onChangeText={handleChange('password')}
-                onBlur={handleBlur('password')}
+                onChangeText={handleChange("password")}
+                onBlur={handleBlur("password")}
                 error={touched.password && errors.password}
               />
 
               <TouchableOpacity
-                onPress={() => router.push('/(auth)/forgot-password')}
+                onPress={() => router.push("/(auth)/forgot-password")}
                 style={styles.forgotPassword}
               >
                 <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
@@ -144,7 +146,7 @@ export default function LoginScreen() {
         {/* Register Link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+          <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
             <Text style={styles.footerLink}>Sign Up</Text>
           </TouchableOpacity>
         </View>
@@ -165,21 +167,21 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING.xl,
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: SPACING.xl,
   },
   logoContainer: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: COLORS.primaryLight + '20',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight + "20",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: SPACING.md,
   },
   title: {
     fontSize: FONT_SIZES.xxxl,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     color: COLORS.textPrimary,
     marginBottom: SPACING.xs,
   },
@@ -191,19 +193,19 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.lg,
   },
   forgotPassword: {
-    alignSelf: 'flex-end',
+    alignSelf: "flex-end",
     marginBottom: SPACING.lg,
   },
   forgotPasswordText: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   loginButton: {
     marginTop: SPACING.sm,
   },
   demoBox: {
-    backgroundColor: COLORS.info + '10',
+    backgroundColor: COLORS.info + "10",
     padding: SPACING.md,
     borderRadius: 8,
     marginBottom: SPACING.lg,
@@ -212,18 +214,18 @@ const styles = StyleSheet.create({
   },
   demoTitle: {
     fontSize: FONT_SIZES.sm,
-    fontWeight: '600',
+    fontWeight: "600",
     color: COLORS.textPrimary,
     marginBottom: SPACING.xs,
   },
   demoText: {
     fontSize: FONT_SIZES.sm,
     color: COLORS.textSecondary,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   },
   divider: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginVertical: SPACING.lg,
   },
   dividerLine: {
@@ -237,8 +239,8 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: SPACING.md,
     marginBottom: SPACING.lg,
   },
@@ -247,12 +249,12 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 28,
     backgroundColor: COLORS.gray100,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     marginTop: SPACING.md,
   },
   footerText: {
@@ -262,6 +264,6 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: FONT_SIZES.md,
     color: COLORS.primary,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });

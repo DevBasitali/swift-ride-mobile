@@ -1,3 +1,5 @@
+// src/context/AuthContext.jsx
+
 import React, { createContext, useState, useEffect } from 'react';
 import Storage from '../utils/storage';
 import { ASYNC_STORAGE_KEYS } from '../config/constants';
@@ -35,42 +37,58 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (credentials) => {
     try {
+      console.log('🔐 Attempting login...');
       const response = await authService.login(credentials);
-      const { user: userData, token: authToken } = response.data.data;
 
-      // Save to state
-      setUser(userData);
-      setToken(authToken);
-      setIsAuthenticated(true);
+      if (response.success) {
+        const { user: userData, token: authToken } = response;
 
-      // Save to storage
-      await Storage.set(ASYNC_STORAGE_KEYS.AUTH_TOKEN, authToken);
-      await Storage.set(ASYNC_STORAGE_KEYS.USER_DATA, userData);
+        // Save to state
+        setUser(userData);
+        setToken(authToken);
+        setIsAuthenticated(true);
 
-      return { success: true, data: userData };
+        // Save to storage
+        await Storage.set(ASYNC_STORAGE_KEYS.AUTH_TOKEN, authToken);
+        await Storage.set(ASYNC_STORAGE_KEYS.USER_DATA, userData);
+
+        console.log('✅ Login successful');
+        return { success: true, data: userData };
+      }
+      
+      return { success: false, message: 'Login failed' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
+      console.error('❌ Login error:', error);
+      const message = error.message || 'Login failed';
       return { success: false, message };
     }
   };
 
   const register = async (userData) => {
     try {
+      console.log('📝 Attempting registration...');
       const response = await authService.register(userData);
-      const { user: newUser, token: authToken } = response.data.data;
 
-      // Save to state
-      setUser(newUser);
-      setToken(authToken);
-      setIsAuthenticated(true);
+      if (response.success) {
+        const { user: newUser, token: authToken } = response;
 
-      // Save to storage
-      await Storage.set(ASYNC_STORAGE_KEYS.AUTH_TOKEN, authToken);
-      await Storage.set(ASYNC_STORAGE_KEYS.USER_DATA, newUser);
+        // Save to state
+        setUser(newUser);
+        setToken(authToken);
+        setIsAuthenticated(true);
 
-      return { success: true, data: newUser };
+        // Save to storage
+        await Storage.set(ASYNC_STORAGE_KEYS.AUTH_TOKEN, authToken);
+        await Storage.set(ASYNC_STORAGE_KEYS.USER_DATA, newUser);
+
+        console.log('✅ Registration successful');
+        return { success: true, data: newUser };
+      }
+      
+      return { success: false, message: 'Registration failed' };
     } catch (error) {
-      const message = error.response?.data?.message || 'Registration failed';
+      console.error('❌ Registration error:', error);
+      const message = error.message || 'Registration failed';
       return { success: false, message };
     }
   };
@@ -104,10 +122,7 @@ export const AuthProvider = ({ children }) => {
   const updateKYCStatus = async (kycData) => {
     const updatedUser = {
       ...user,
-      kycStatus: kycData.kycStatus,
-      cnicFrontUrl: kycData.cnicFrontUrl,
-      cnicBackUrl: kycData.cnicBackUrl,
-      selfieUrl: kycData.selfieUrl,
+      kycStatus: kycData.kycStatus || kycData.data?.kycStatus || 'pending',
     };
     setUser(updatedUser);
     await Storage.set(ASYNC_STORAGE_KEYS.USER_DATA, updatedUser);

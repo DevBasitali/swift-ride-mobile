@@ -1,8 +1,11 @@
+// src/utils/helpers.js
+
+export const sleep = (ms) => {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+};
+
 export const formatPhoneNumber = (phone) => {
-  // Remove all non-numeric characters
   const cleaned = phone.replace(/\D/g, '');
-  
-  // Format as (XXX) XXX-XXXX
   const match = cleaned.match(/^(\d{3})(\d{3})(\d{4})$/);
   if (match) {
     return `(${match[1]}) ${match[2]}-${match[3]}`;
@@ -21,8 +24,4 @@ export const capitalizeFirstLetter = (string) => {
 
 export const generateRandomId = () => {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
-export const sleep = (ms) => {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 };

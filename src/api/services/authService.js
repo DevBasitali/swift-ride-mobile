@@ -1,62 +1,72 @@
-import { MOCK_USERS, generateMockToken, mockApiResponse, mockApiError } from '../mockData';
-import { sleep } from '../../utils/helpers';
+// src/api/services/authService.js
+
+// Mock user database
+const MOCK_USERS = [
+  {
+    id: '1',
+    name: 'John Doe',
+    email: 'john@test.com',
+    phone: '+1234567890',
+    password: '123456',
+    role: 'renter',
+    kycStatus: 'approved',
+    walletBalance: 500,
+    profilePicture: null,
+  },
+  {
+    id: '2',
+    name: 'Jane Smith',
+    email: 'jane@test.com',
+    phone: '+1234567891',
+    password: '123456',
+    role: 'host',
+    kycStatus: 'approved',
+    walletBalance: 1500,
+    profilePicture: null,
+  },
+];
+
+// Helper function
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 class AuthService {
-  // Login
+  // Mock Login
   async login(credentials) {
-    console.log('🔐 Mock Login:', credentials);
+    console.log('🔐 Mock Login:', credentials.email);
     
     // Simulate API delay
-    await sleep(1500);
+    await sleep(1000);
     
     const user = MOCK_USERS.find(
       (u) => u.email === credentials.email && u.password === credentials.password
     );
     
     if (!user) {
-      throw {
-        response: {
-          data: {
-            success: false,
-            message: 'Invalid email or password',
-          },
-        },
-      };
+      throw new Error('Invalid email or password');
     }
     
-    const token = generateMockToken(user.id);
+    const token = `mock_token_${user.id}_${Date.now()}`;
     const { password, ...userWithoutPassword } = user;
     
     return {
-      data: {
-        success: true,
-        data: {
-          user: userWithoutPassword,
-          token,
-        },
-        message: 'Login successful',
-      },
+      success: true,
+      token,
+      user: userWithoutPassword,
+      message: 'Login successful',
     };
   }
 
-  // Register
+  // Mock Register
   async register(userData) {
-    console.log('📝 Mock Register:', userData);
+    console.log('📝 Mock Register:', userData.email);
     
-    await sleep(1500);
+    await sleep(1000);
     
     // Check if email already exists
     const existingUser = MOCK_USERS.find((u) => u.email === userData.email);
     
     if (existingUser) {
-      throw {
-        response: {
-          data: {
-            success: false,
-            message: 'Email already registered',
-          },
-        },
-      };
+      throw new Error('Email already registered');
     }
     
     const newUser = {
@@ -64,166 +74,106 @@ class AuthService {
       name: userData.name,
       email: userData.email,
       phone: userData.phone,
-      role: userData.role,
+      role: userData.role || 'renter',
       kycStatus: 'pending',
-      cnicFrontUrl: null,
-      cnicBackUrl: null,
-      selfieUrl: null,
       walletBalance: 0,
-      createdAt: new Date().toISOString(),
+      profilePicture: null,
     };
     
     MOCK_USERS.push({ ...newUser, password: userData.password });
     
-    const token = generateMockToken(newUser.id);
+    const token = `mock_token_${newUser.id}_${Date.now()}`;
     
     return {
-      data: {
-        success: true,
-        data: {
-          user: newUser,
-          token,
-        },
-        message: 'Registration successful',
-      },
+      success: true,
+      token,
+      user: newUser,
+      message: 'Registration successful',
     };
   }
 
-  // Forgot Password
+  // Mock Forgot Password
   async forgotPassword(email) {
     console.log('📧 Mock Forgot Password:', email);
     
-    await sleep(1500);
+    await sleep(1000);
     
     const user = MOCK_USERS.find((u) => u.email === email);
     
     if (!user) {
-      throw {
-        response: {
-          data: {
-            success: false,
-            message: 'Email not found',
-          },
-        },
-      };
+      throw new Error('Email not found');
     }
     
     return {
-      data: {
-        success: true,
-        data: {
-          message: 'OTP sent to your email',
-          otp: '123456', // In real app, this wouldn't be returned
-        },
-        message: 'OTP sent successfully',
-      },
+      success: true,
+      message: 'Password reset email sent to ' + email,
     };
   }
 
-  // Verify OTP
-  async verifyOTP(email, otp) {
-    console.log('🔢 Mock Verify OTP:', { email, otp });
+  // Mock Reset Password
+  async resetPassword(token, newPassword) {
+    console.log('🔑 Mock Reset Password');
     
     await sleep(1000);
     
-    // Mock: any 6-digit code works
-    if (otp === '123456') {
-      return {
-        data: {
-          success: true,
-          data: {
-            verified: true,
-          },
-          message: 'OTP verified successfully',
-        },
-      };
-    }
-    
-    throw {
-      response: {
-        data: {
-          success: false,
-          message: 'Invalid OTP',
-        },
-      },
-    };
-  }
-
-  // Reset Password
-  async resetPassword(email, otp, newPassword) {
-    console.log('🔑 Mock Reset Password:', { email, otp });
-    
-    await sleep(1500);
-    
-    const user = MOCK_USERS.find((u) => u.email === email);
-    
-    if (!user || otp !== '123456') {
-      throw {
-        response: {
-          data: {
-            success: false,
-            message: 'Invalid OTP or email',
-          },
-        },
-      };
-    }
-    
-    user.password = newPassword;
-    
     return {
-      data: {
-        success: true,
-        message: 'Password reset successful',
-      },
+      success: true,
+      message: 'Password reset successful',
     };
   }
 
-  // Upload KYC
+  // Mock Logout
+  async logout() {
+    console.log('👋 Mock Logout');
+    await sleep(500);
+    return { success: true, message: 'Logged out successfully' };
+  }
+
+  // Mock Upload KYC
   async uploadKYC(kycData) {
-    console.log('📸 Mock Upload KYC:', kycData);
+    console.log('📸 Mock Upload KYC');
     
     await sleep(2000);
     
     return {
+      success: true,
+      message: 'KYC documents uploaded successfully',
       data: {
-        success: true,
-        data: {
-          kycStatus: 'pending',
-          cnicFrontUrl: kycData.cnicFront,
-          cnicBackUrl: kycData.cnicBack,
-          selfieUrl: kycData.selfie,
-        },
-        message: 'KYC documents uploaded successfully. Verification in progress.',
-      },
+        kycStatus: 'pending',
+        cnicFrontUrl: kycData.cnicFront,
+        cnicBackUrl: kycData.cnicBack,
+        selfieUrl: kycData.selfie,
+      }
     };
   }
 
-  // Get KYC Status
-  async getKYCStatus(userId) {
-    console.log('📋 Mock Get KYC Status:', userId);
+  // Mock Get Profile
+  async getProfile() {
+    console.log('👤 Mock Get Profile');
+    
+    await sleep(500);
+    
+    // Return first user as mock
+    const user = MOCK_USERS[0];
+    const { password, ...userWithoutPassword } = user;
+    
+    return {
+      success: true,
+      user: userWithoutPassword,
+    };
+  }
+
+  // Mock Update Profile
+  async updateProfile(profileData) {
+    console.log('✏️ Mock Update Profile:', profileData);
     
     await sleep(1000);
     
-    const user = MOCK_USERS.find((u) => u.id === userId);
-    
     return {
-      data: {
-        success: true,
-        data: {
-          kycStatus: user?.kycStatus || 'pending',
-          cnicFrontUrl: user?.cnicFrontUrl,
-          cnicBackUrl: user?.cnicBackUrl,
-          selfieUrl: user?.selfieUrl,
-        },
-      },
+      success: true,
+      message: 'Profile updated successfully',
+      user: profileData,
     };
-  }
-
-  // Logout (client-side only)
-  async logout() {
-    console.log('👋 Mock Logout');
-    await sleep(500);
-    return { data: { success: true, message: 'Logged out successfully' } };
   }
 }
 

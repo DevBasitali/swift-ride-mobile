@@ -1,4 +1,4 @@
-// app/(renter)/my-trips.jsx
+// app/(host)/trips.jsx
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -11,11 +11,10 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/hooks/useAuth';
 import bookingService from '../../src/api/services/bookingService';
 import TripCard from '../../src/components/trip/TripCard';
-import { COLORS, SPACING, FONT_SIZES, BORDER_RADIUS } from '../../src/config/theme';
+import { COLORS, SPACING, FONT_SIZES } from '../../src/config/theme';
 
 const TABS = [
   { id: 'upcoming', label: 'Upcoming' },
@@ -23,7 +22,7 @@ const TABS = [
   { id: 'history', label: 'History' },
 ];
 
-export default function MyTripsScreen() {
+export default function HostTripsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('upcoming');
@@ -31,7 +30,6 @@ export default function MyTripsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Reload data when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadBookings();
@@ -41,7 +39,8 @@ export default function MyTripsScreen() {
   const loadBookings = async () => {
     try {
       setLoading(true);
-      const response = await bookingService.getUserBookings(user?.id, 'renter');
+      // Fetch bookings where I am the HOST
+      const response = await bookingService.getUserBookings(user?.id, 'host');
       if (response.success) {
         setBookings(response.data);
       }
@@ -71,8 +70,7 @@ export default function MyTripsScreen() {
     }
   };
 
-  // REPLACE WITH THIS (Direct path):
-const handleTripPress = (booking) => {
+  const handleTripPress = (booking) => {
   router.push(`/trip/${booking.id}`);
 };
 
@@ -80,32 +78,21 @@ const handleTripPress = (booking) => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Ionicons name="calendar-outline" size={80} color={COLORS.gray300} />
       <Text style={styles.emptyTitle}>No trips found</Text>
       <Text style={styles.emptyText}>
         {activeTab === 'upcoming' 
-          ? "You don't have any upcoming trips booked." 
+          ? "No upcoming bookings for your cars." 
           : "No trip history found."}
       </Text>
-      {activeTab === 'upcoming' && (
-        <TouchableOpacity 
-          style={styles.bookButton}
-          onPress={() => router.push('/(renter)/home')}
-        >
-          <Text style={styles.bookButtonText}>Book a Car</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Trips</Text>
+        <Text style={styles.headerTitle}>Bookings</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabsContainer}>
         {TABS.map((tab) => (
           <TouchableOpacity
@@ -120,7 +107,6 @@ const handleTripPress = (booking) => {
         ))}
       </View>
 
-      {/* List */}
       {loading && !refreshing ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -208,18 +194,5 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     marginTop: SPACING.sm,
-    maxWidth: '70%',
-  },
-  bookButton: {
-    marginTop: SPACING.xl,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDER_RADIUS.md,
-  },
-  bookButtonText: {
-    color: COLORS.white,
-    fontWeight: '600',
-    fontSize: FONT_SIZES.md,
   },
 });
